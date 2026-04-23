@@ -164,9 +164,6 @@ document.addEventListener('DOMContentLoaded', async function() {
       window.Babel.transformScriptTags();
     }
 
-    // Background music — plays music.mp3 from the same folder.
-    // Browsers block autoplay until the first user gesture; the button lets
-    // users toggle at any time after that.
     const _audio = document.createElement('audio');
     _audio.src = 'music.mp3';
     _audio.loop = true;
@@ -187,14 +184,27 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
     document.body.appendChild(_btn);
 
+    // Try immediate autoplay; if the browser blocks it (no prior user gesture),
+    // hook every early interaction event so music starts at the first opportunity.
     let _started = false;
     function _startMusic() {
       if (_started) return;
       _started = true;
+      ['click','touchstart','keydown','scroll','mousemove'].forEach(function(t) {
+        document.removeEventListener(t, _startMusic, true);
+      });
       _audio.play().then(function() { _btn.textContent = '♫'; }).catch(function() {});
     }
-    document.addEventListener('click', _startMusic, { once: true });
-    document.addEventListener('touchstart', _startMusic, { once: true });
+
+    _audio.play().then(function() {
+      _started = true;
+      _btn.textContent = '♫';
+    }).catch(function() {
+      // Autoplay blocked — wait for any user interaction
+      ['click','touchstart','keydown','scroll','mousemove'].forEach(function(t) {
+        document.addEventListener(t, _startMusic, { once: true, capture: true });
+      });
+    });
 
   } catch (err) {
     setStatus('Error unpacking: ' + err.message);
